@@ -35,10 +35,18 @@ void cambiarCategoriaPorAntiguedad(tEmpleado *empleados, int cant, int *terminar
     while (!*terminar) {
         waitSemaforo(semid);
         for (int i = 0; i < cant; i++) {
-            if (empleados[i].antiguedad > 5) {
-                empleados[i].categoria = 2;
+            if (empleados[i].antiguedad > 5  && empleados[i].antiguedad <= 10 && empleados[i].categoria == 'C')
+            {
+                empleados[i].categoria = 'B';
             }
+            if (empleados[i].antiguedad > 10 && empleados[i].categoria == 'B')
+            {
+                empleados[i].categoria = 'A';
+            }
+            
         }
+
+
         printf("[Hijo 3] Cambiadas categorías por antigüedad\n");
         signalSemaforo(semid);
         sleep(2);
@@ -50,7 +58,7 @@ void borrarEmpleadosConSueldoBajo(tEmpleado *empleados, int *cant, int *terminar
         waitSemaforo(semid);
         int j = 0;
         for (int i = 0; i < *cant; i++) {
-            if (empleados[i].sueldo >= 50000) {
+            if (empleados[i].sueldo >= 45000) {
                 empleados[j++] = empleados[i];
             }
         }
@@ -63,7 +71,7 @@ void borrarEmpleadosConSueldoBajo(tEmpleado *empleados, int *cant, int *terminar
 
 
 
-void mostrarEMpleadosFinal(tEmpleado *empleados,int *cant)
+/**void mostrarEMpleadosFinal(tEmpleado *empleados,int *cant)
 {
     while(*cant > 0)
     {
@@ -71,5 +79,14 @@ void mostrarEMpleadosFinal(tEmpleado *empleados,int *cant)
             empleados->categoria,empleados->antiguedad,empleados->sueldo);
         empleados++;
         cant--;
+    }
+}
+*/
+void mostrarEMpleadosFinal(tEmpleado *empleados, int *cant)
+{
+    for (int i = 0; i < *cant; i++)
+    {
+        printf("%-7d %-20s %-3c %10d %14.2f\n", empleados[i].legajo, empleados[i].nombre,
+               empleados[i].categoria, empleados[i].antiguedad, empleados[i].sueldo);
     }
 }

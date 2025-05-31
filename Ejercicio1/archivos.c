@@ -5,26 +5,26 @@ int crearArchivo(FILE **pf, const char *nombreArchivo)
 
     tEmpleado empleados[] =
     { ///Legajo   nombre     cat  ant    sueldo
-        {1001, "Juan Perez", 'A', 5, 50000},
-        {1002, "Maria Gomez", 'B', 3, 42000},
-        {1003, "Carlos Ruiz", 'C', 10, 60000},
-        {1004, "Ana Torres", 'B', 7, 47000},
-        {1005, "Martin Fernandez", 'A', 4, 48000},
+        {1001, "Juan Perez", 'B', 5, 50000},
+        {1002, "Maria Gomez", 'C', 3, 42000},
+        {1003, "Carlos Ruiz", 'A', 10, 60000},
+        {1004, "Ana Torres", 'C', 7, 47000},
+        {1005, "Martin Fernandez", 'C', 4, 48000},
         {1006, "Lucia Rivas", 'C', 6, 51000},
-        {1007, "Javier Diaz", 'A', 2, 39000},
+        {1007, "Javier Diaz", 'A', 2, 79000},
         {1008, "Carolina Romero", 'B', 9, 53000},
-        {1009, "Diego Sosa", 'C', 12, 62000},
-        {1010, "Florencia Acura", 'B', 3, 44000},
-        {1011, "Federico Lopez", 'A', 8, 56000},
-        {1012, "Valentina Herrera", 'C', 11, 61000},
-        {1013, "Santiago Medina", 'B', 5, 49000},
-        {1014, "Agustina Vargas", 'C', 7, 52000},
-        {1015, "Gonzalo Castro", 'A', 6, 47000},
-        {1016, "Camila Molina", 'B', 4, 45000},
-        {1017, "Nicolas Paredes", 'C', 9, 58000},
-        {1018, "Julieta Navarro", 'A', 3, 43000},
-        {1019, "Tomas Gimenez", 'B', 10, 60000},
-        {1020, "Milagros Benitez", 'C', 8, 55000}
+        {1009, "Diego Sosa", 'A', 12, 62000},
+        {1010, "Florencia Acura", 'C', 3, 44000},
+        {1011, "Federico Lopez", 'B', 8, 56000},
+        {1012, "Valentina Herrera", 'A', 11, 61000},
+        {1013, "Santiago Medina", 'C', 5, 49000},
+        {1014, "Agustina Vargas", 'B', 7, 52000},
+        {1015, "Gonzalo Castro", 'C', 6, 47000},
+        {1016, "Camila Molina", 'C', 4, 45000},
+        {1017, "Nicolas Paredes", 'B', 9, 58000},
+        {1018, "Julieta Navarro", 'A', 3, 83000},
+        {1019, "Tomas Gimenez", 'A', 10, 60000},
+        {1020, "Milagros Benitez", 'B', 8, 55000}
     };
 
     if(fwrite(empleados,sizeof(empleados),1,*pf))

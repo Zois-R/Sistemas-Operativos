@@ -13,7 +13,7 @@ int crearMemoriaCompartida(size_t tam)
     return shmid;
 }
 
-// Asocia el segmento de memoria compartida al espacio de direcciones del proceso
+// Asociamos el segmento de memoria compartida al espacio de direcciones del proceso
 void* asociarMemoria(int shmid)
 {
     void *dir = shmat(shmid, NULL, 0);
@@ -25,7 +25,7 @@ void* asociarMemoria(int shmid)
     return dir;
 }
 
-// Desasocia la memoria compartida del proceso
+// Desasocia la memoria compartida del proceso para liberarla
 int liberarMemoria(void *dir)
 {
     if (shmdt(dir) == -1)
