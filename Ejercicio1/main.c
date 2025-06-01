@@ -13,7 +13,6 @@ int main()
     char c;
     tEmpleado *empleados;
     int semid;
-    int cantEmpleados;
     char nombreArchivo[] = "Empleados.bin";
     __pid_t pid1,pid2,pid3,pid4;
     //Esto corresponde a la creación de la estructura del archivo
@@ -28,7 +27,7 @@ int main()
 
     ///Acá todo lo relacionado con la memoria compartida
 
-    shmid = crearMemoriaCompartida(sizeof(tEmpleado) * CANT_EMPLEADOS +sizeof(int));
+    shmid = crearMemoriaCompartida(sizeof(tEmpleado) * CANT_EMPLEADOS + sizeof(int) + sizeof(int));
     if( shmid == -1)
     {
         perror("Error al crear memoria compartida\n");
@@ -46,13 +45,12 @@ int main()
      }
     int *terminar = (int*)(empleados + CANT_EMPLEADOS);
     *terminar = 0;
-   
-
+    int *cantEmpleados = (int*)(empleados + CANT_EMPLEADOS + sizeof(int));
 
     //CARGAMOS LOS REGISTROS DEL ARCHIVO EN LA MEMORIA COMPARTIDA CREADA
 
     aperturaArchivo(&pf,nombreArchivo,"rb");
-    cargarMemoriaDesdeArchivo(pf,empleados,&cantEmpleados);
+    cargarMemoriaDesdeArchivo(pf,empleados, cantEmpleados);
     fclose(pf);
 
      //Creamos el semáforo para sincronizar el acceso a empleados.
@@ -74,7 +72,7 @@ int main()
         perror("Error al hacer fork");
         return 1;
     } else if (pid1 == 0) {
-        calcularPromedioSueldos(empleados, cantEmpleados, terminar,semid);
+        calcularPromedioSueldos(empleados, cantEmpleados, terminar, semid);
         exit(0);
     }
 
@@ -84,7 +82,7 @@ int main()
         perror("Error al hacer fork");
         return 1;
     } else if (pid2 == 0) {
-        aumentarSueldosPorCategoria(empleados,cantEmpleados, terminar,semid);
+        aumentarSueldosPorCategoria(empleados, cantEmpleados, terminar,semid);
         exit(0);
     }
 
@@ -95,7 +93,7 @@ int main()
         return 1;
     } else if (pid3 == 0) 
     {
-        cambiarCategoriaPorAntiguedad(empleados,cantEmpleados,terminar,semid);
+        cambiarCategoriaPorAntiguedad(empleados, cantEmpleados,terminar,semid);
         exit(0);
     }
 
@@ -107,7 +105,7 @@ int main()
         return 1;
     } else if (pid4 == 0)
      {
-        borrarEmpleadosConSueldoBajo(empleados, &cantEmpleados,terminar,semid);
+        borrarEmpleadosConSueldoBajo(empleados, cantEmpleados, terminar, semid);
         exit(0);
     }
 
@@ -130,7 +128,7 @@ int main()
 
     printf("\nListado de empleados luego de que los procesos hayan realizados sus operaciones\n\n");
 
-    mostrarEMpleadosFinal(empleados,&cantEmpleados);
+    mostrarEMpleadosFinal(empleados, cantEmpleados);
     ///Ahora tenemos que liberar la memoria compartida ya que los procesos terminaron
 
     if(liberarMemoria(empleados) == -1)
