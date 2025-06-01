@@ -65,6 +65,10 @@ int main()
 
      inicializarSemaforo(semid,1);
 
+    printf("\nA continuación comienzan las operaciones de los procesos hijos. Luego de continuar inserte 's' para finalizar los procesos hijos.\n");
+    printf("\nPresione la tecla enter para continuar...\n");
+    getchar();
+
     pid1 = fork();
     if (pid1 < 0) {
         perror("Error al hacer fork");
@@ -107,13 +111,16 @@ int main()
         exit(0);
     }
 
-    printf("Presiona 's' para finalizar los procesos hijos nuevo...\n");
-    fflush(stdin);
-    scanf("%c",&c);
-    if(c == 's')
+    c = getchar();
+    while (getchar() != '\n' && getchar() != EOF); // Limpiar el buffer de entrada
+    while(c != 's')
     {
+        printf("\n\nDebe presionar 's' para finalizar los procesos hijos...\n\n");
+        c = getchar();
+        while (getchar() != '\n' && getchar() != EOF); // Limpiar el buffer de entrada
+    }
 
-        *terminar = 1; //Ya finalizó
+    *terminar = 1; //Ya finalizó
 
     //Con esto esperamos a que todos los hijos terminen
     for (int i = 0; i < 4; i++) 
@@ -131,7 +138,7 @@ int main()
         fprintf(stderr, "No se pudo desasociar la memoria compartida\n");
     }
 
-// Eliminar el segmento de memoria compartida
+    // Eliminar el segmento de memoria compartida
     if (eliminarMemoria(shmid) == -1)
     {
         fprintf(stderr, "No se pudo eliminar la memoria compartida\n");
@@ -139,9 +146,6 @@ int main()
 
     // Eliminar semáforo
     eliminarSemaforo(semid);
-    }
-    
-     
 
     return 0;
 }

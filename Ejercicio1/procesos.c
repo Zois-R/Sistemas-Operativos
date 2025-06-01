@@ -21,11 +21,11 @@ void aumentarSueldosPorCategoria(tEmpleado *empleados, int cant, int *terminar, 
     while (!*terminar) {
         waitSemaforo(semid);
         for (int i = 0; i < cant; i++) {
-            if (empleados[i].categoria == 1) {
+            if (empleados[i].categoria == 'B') {
                 empleados[i].sueldo *= 1.1;
             }
         }
-        printf("[Hijo 2] Aumentados sueldos cat.1\n");
+        printf("[Hijo 2] Aumentados sueldos cat B\n");
         signalSemaforo(semid);
         sleep(2);
     }
