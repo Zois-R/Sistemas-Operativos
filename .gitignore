@@ -1,0 +1,9 @@
+### VS Code ###
+.vscode/
+
+bin
+obj
+.cbp
+.exe
+.depend
+.layout
