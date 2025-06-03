@@ -67,7 +67,9 @@ Ejecute en una nueva terminal el siguiente comando:
 
 El servidor se encarga de brindarle una respuesta a los comandos que envíen los clientes.
 
-Se aceptan hasta un máximo de 5 clientes. Superado dicho límite el cliente adicional entra en espera hasta que se libere un lugar en el servidor.
+Se aceptan hasta un máximo de 5 clientes. Superado dicho límite el cliente adicional no podrá comunicarse y finalizará su ejecución hasta que se libere un lugar en el servidor.
+
+Si se terminan todas las conexiones, el servidor cerrará automáticamente.
 
 ### Cliente
 
