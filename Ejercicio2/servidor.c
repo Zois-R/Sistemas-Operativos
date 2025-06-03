@@ -18,6 +18,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 void *atender_cliente(void *arg);
 void procesar_mensaje(char *msg, char *respuesta);
 char* normalizar_cadena(char* cad);
+void obtener_comando_y_texto(char *msg, char *comando, char *texto, char *respuesta);
 
 
 //-------------------------------------------------------
@@ -103,10 +104,7 @@ void procesar_mensaje(char *msg, char *respuesta) {
     char comando[10];
     char texto[MAX_MSG];
 
-    if (sscanf(msg, "%s <%[^>]>", comando, texto) != 2) {
-        strcpy(respuesta, "Formato inválido. Usa: COMANDO <texto>");
-        return;
-    }
+    obtener_comando_y_texto(msg, comando, texto, respuesta);
 
     if (strcmp(comando, "MAYUS") == 0) {
         for (int i = 0; texto[i]; i++)
@@ -118,16 +116,40 @@ void procesar_mensaje(char *msg, char *respuesta) {
         strcpy(respuesta, texto);
     } else if (strcmp(comando, "NORM") == 0) {
         normalizar_cadena(texto);
-        /*
-        texto[0] = toupper(texto[0]);
-        for (int i = 1; texto[i]; i++)
-            texto[i] = tolower(texto[i]);
-        */
         strcpy(respuesta, texto);
     } else if (strcmp(comando, "LONG") == 0) {
         sprintf(respuesta, "Longitud: %lu", strlen(texto));
     } else {
         strcpy(respuesta, "Comando no reconocido");
+    }
+}
+//-----------------------------------------------------------------------
+void obtener_comando_y_texto(char *msg, char *comando, char *texto, char *respuesta)
+{
+    // Elimina el salto de línea al final si existe
+    msg[strcspn(msg, "\n")] = 0;
+
+    // Busca el primer espacio para separar el comando
+    char *inicioTexto = strchr(msg, ' ');
+    if (inicioTexto != NULL && *(inicioTexto + 1) == '<') {
+        // Copia el comando
+        size_t longitudComando = inicioTexto - msg;
+        strncpy(comando, msg, longitudComando);
+        comando[longitudComando] = '\0';
+
+        // Busca el final del texto entre <>
+        char *finTexto = strrchr(inicioTexto + 2, '>');
+
+        if (finTexto != NULL) {
+            size_t longitudTexto = finTexto - (inicioTexto + 2);
+            strncpy(texto, inicioTexto + 2, longitudTexto);
+            texto[longitudTexto] = '\0';
+        } else {
+            // Error: Falta el signo '>' de cierre.
+            strcpy(respuesta, "Formato inválido. Usa: COMANDO <texto>");
+        }
+    } else {
+        strcpy(respuesta, "Formato inválido. Usa: COMANDO <texto>");
     }
 }
 //-----------------------------------------------------------------------
