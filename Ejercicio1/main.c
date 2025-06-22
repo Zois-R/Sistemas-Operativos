@@ -2,148 +2,142 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <signal.h>
+#include <sys/select.h>
+#include <sys/prctl.h>
 #include "archivos.h"
 #include "memoria.h"
 #include "procesos.h"
 #include "semaforos.h"
-int main()
-{
-    int shmid; //Nos va a dar el id del recurso de la memoria
-    FILE *pf;
-    char c;
-    tEmpleado *empleados;
-    int semid;
-    char nombreArchivo[] = "Empleados.bin";
-    __pid_t pid1,pid2,pid3,pid4;
-    //Esto corresponde a la creación de la estructura del archivo
-    aperturaArchivo(&pf,nombreArchivo,"wb");
-    crearArchivo(&pf,nombreArchivo);
-    fclose(pf);
 
+#define N_HIJOS 4
 
-    aperturaArchivo(&pf,nombreArchivo,"rb");
-    mostrarArchivo(&pf,nombreArchivo);
-    fclose(pf);
+int shmid = -1, semid = -1;
+pid_t hijos[N_HIJOS];
+tEmpleado *empleados = NULL;
+int *terminar = NULL, *cantEmpleados = NULL;
 
-    ///Acá todo lo relacionado con la memoria compartida
+volatile sig_atomic_t terminarPrograma = 0;
 
-    shmid = crearMemoriaCompartida(sizeof(tEmpleado) * CANT_EMPLEADOS + sizeof(int) + sizeof(int));
-    if( shmid == -1)
-    {
-        perror("Error al crear memoria compartida\n");
-        return 1;
+void handler(int sig) {
+    //printf("\n[Padre] Recibí señal %d. Preparando salida...\n", sig);
+    terminarPrograma = 1;
+}
+
+void finalizarHijos() {
+    *terminar = 1;
+    for (int i = 0; i < N_HIJOS; i++) {
+        if (hijos[i] > 0) {
+            kill(hijos[i], SIGTERM);
+            waitpid(hijos[i], NULL, 0);
+            printf("\tHijo %d terminado.\n", hijos[i]);
+        }
     }
-    
-    //Ahora tenemos que asociar la memoria al espacio de direcciones
-    ///Para poder utilizar el puntero del vector
+}
+
+int main() {
+    FILE *pf;
+
+    // Señales
+    struct sigaction sa = {0};
+    sa.sa_handler = handler;
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
+
+    // Archivo inicial
+    aperturaArchivo(&pf, "Empleados.bin", "wb");
+    crearArchivo(&pf, "Empleados.bin");
+    fclose(pf);
+
+    aperturaArchivo(&pf, "Empleados.bin", "rb");
+    mostrarArchivo(&pf, "Empleados.bin");
+    fclose(pf);
+
+    // Memoria compartida
+    shmid = crearMemoriaCompartida(sizeof(tEmpleado) * CANT_EMPLEADOS + sizeof(int) + sizeof(int));
+    if (shmid == -1) exit(EXIT_FAILURE);
 
     empleados = (tEmpleado*)asociarMemoria(shmid);
-     if(!empleados)
-     {
-        perror("Error al asociar memoria\n");
-        return 1;
-     }
-    int *terminar = (int*)(empleados + CANT_EMPLEADOS);
+    if (!empleados) exit(EXIT_FAILURE);
+
+    terminar = (int*)(empleados + CANT_EMPLEADOS);
     *terminar = 0;
-    int *cantEmpleados = (int*)(empleados + CANT_EMPLEADOS + sizeof(int));
+    cantEmpleados = (int*)(terminar + 1);
 
-    //CARGAMOS LOS REGISTROS DEL ARCHIVO EN LA MEMORIA COMPARTIDA CREADA
-
-    aperturaArchivo(&pf,nombreArchivo,"rb");
-    cargarMemoriaDesdeArchivo(pf,empleados, cantEmpleados);
+    aperturaArchivo(&pf, "Empleados.bin", "rb");
+    cargarMemoriaDesdeArchivo(pf, empleados, cantEmpleados);
     fclose(pf);
 
-     //Creamos el semáforo para sincronizar el acceso a empleados.
-     semid = crearSemaforo(1);
-     if(semid == -1)
-     {
-        perror("Error al crear semáforo \n");
-        return 1;
-     }
+    // Semáforo
+    semid = crearSemaforo();
+    inicializarSemaforo(semid, 1);
 
-     inicializarSemaforo(semid,1);
-
-    printf("\nA continuación comienzan las operaciones de los procesos hijos. Luego de continuar inserte 's' para finalizar los procesos hijos.\n");
-    printf("\nPresione la tecla enter para continuar...\n");
+    printf("\nPresione ENTER para comenzar...\n");
     getchar();
 
-    pid1 = fork();
-    if (pid1 < 0) {
-        perror("Error al hacer fork");
-        return 1;
-    } else if (pid1 == 0) {
-        calcularPromedioSueldos(empleados, cantEmpleados, terminar, semid);
-        exit(0);
+    printf("Presione 's' + ENTER para finalizar o Ctrl+C.\n");
+
+    // Crear hijos
+    for (int i = 0; i < N_HIJOS; i++) {
+        hijos[i] = fork();
+        if (hijos[i] < 0) {
+            perror("Error en fork");
+            terminarPrograma = 1;
+            break;
+        } else if (hijos[i] == 0) {
+            prctl(PR_SET_PDEATHSIG, SIGTERM);
+            if (getppid() == 1) exit(EXIT_FAILURE);
+            signal(SIGTERM, SIG_DFL);
+            switch(i) {
+                case 0: calcularPromedioSueldos(empleados, cantEmpleados, terminar, semid); break;
+                case 1: aumentarSueldosPorCategoria(empleados, cantEmpleados, terminar, semid); break;
+                case 2: cambiarCategoriaPorAntiguedad(empleados, cantEmpleados, terminar, semid); break;
+                case 3: borrarEmpleadosConSueldoBajo(empleados, cantEmpleados, terminar, semid); break;
+            }
+            exit(0);
+        }
     }
 
+    // Loop principal con select + supervisión de hijos
+    while (!terminarPrograma) {
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+        struct timeval tv = {1, 0};
 
-    pid2 = fork();
-    if (pid2 < 0) {
-        perror("Error al hacer fork");
-        return 1;
-    } else if (pid2 == 0) {
-        aumentarSueldosPorCategoria(empleados, cantEmpleados, terminar,semid);
-        exit(0);
+        int r = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
+        if (r > 0 && FD_ISSET(STDIN_FILENO, &readfds)) {
+            char c = getchar();
+            if (c == 's') {
+                terminarPrograma = 1;
+            } else {
+                printf("Presione 's' para terminar o Ctrl+C.\n");
+            }
+        }
+
+        // Supervisar hijos
+        for (int i = 0; i < N_HIJOS; i++) {
+            if (hijos[i] > 0) {
+                int status;
+                pid_t result = waitpid(hijos[i], &status, WNOHANG);
+                if (result == hijos[i]) {
+                    printf("[Padre] Detecté que el hijo %d terminó inesperadamente.\n", hijos[i]);
+                    terminarPrograma = 1;
+                }
+            }
+        }
     }
 
+    finalizarHijos();
 
-    pid3 = fork();
-    if (pid3 < 0) {
-        perror("Error al hacer fork");
-        return 1;
-    } else if (pid3 == 0) 
-    {
-        cambiarCategoriaPorAntiguedad(empleados, cantEmpleados,terminar,semid);
-        exit(0);
-    }
-
-
-    pid4 = fork();
-    if (pid4 < 0) 
-    {
-        perror("Error al hacer fork");
-        return 1;
-    } else if (pid4 == 0)
-     {
-        borrarEmpleadosConSueldoBajo(empleados, cantEmpleados, terminar, semid);
-        exit(0);
-    }
-
-    c = getchar();
-    while (getchar() != '\n' && getchar() != EOF); // Limpiar el buffer de entrada
-    while(c != 's')
-    {
-        printf("\n\nDebe presionar 's' para finalizar los procesos hijos...\n\n");
-        c = getchar();
-        while (getchar() != '\n' && getchar() != EOF); // Limpiar el buffer de entrada
-    }
-
-    *terminar = 1; //Ya finalizó
-
-    //Con esto esperamos a que todos los hijos terminen
-    for (int i = 0; i < 4; i++) 
-    {
-        wait(NULL);
-    }
-
-    printf("\nListado de empleados luego de que los procesos hayan realizados sus operaciones\n\n");
-
+    printf("\nListado final de empleados:\n");
     mostrarEMpleadosFinal(empleados, cantEmpleados);
-    ///Ahora tenemos que liberar la memoria compartida ya que los procesos terminaron
 
-    if(liberarMemoria(empleados) == -1)
-    {
-        fprintf(stderr, "No se pudo desasociar la memoria compartida\n");
-    }
+    // Limpieza
+    if (empleados) liberarMemoria(empleados);
+    if (shmid != -1) eliminarMemoria(shmid);
+    if (semid != -1) eliminarSemaforo(semid);
 
-    // Eliminar el segmento de memoria compartida
-    if (eliminarMemoria(shmid) == -1)
-    {
-        fprintf(stderr, "No se pudo eliminar la memoria compartida\n");
-    }
-
-    // Eliminar semáforo
-    eliminarSemaforo(semid);
-
+    printf("Recursos liberados correctamente.\n");
     return 0;
 }
