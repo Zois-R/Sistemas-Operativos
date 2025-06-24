@@ -43,6 +43,7 @@ int main() {
     sa.sa_handler = handler;
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGHUP, &sa, NULL);
 
     // Archivo inicial
     aperturaArchivo(&pf, "Empleados.bin", "wb");
