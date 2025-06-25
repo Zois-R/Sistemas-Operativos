@@ -3,93 +3,118 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
-#define MAX_MSG 150
+int leer_config(const char *ruta, char *ip, int *puerto, int *max_clientes, int *max_msg) {
+    FILE *f = fopen(ruta, "r");
+    if (!f) {
+        perror("No se pudo abrir el archivo de configuración");
+        return 0;
+    }
+
+    char linea[100];
+    while (fgets(linea, sizeof(linea), f)) {
+        if (strncmp(linea, "IP=", 3) == 0) {
+            strcpy(ip, linea + 3);
+            ip[strcspn(ip, "\n")] = 0;
+        } else if (strncmp(linea, "PUERTO=", 7) == 0) {
+            *puerto = atoi(linea + 7);
+        } else if (strncmp(linea, "MAX_CLIENTES=", 13) == 0) {
+            *max_clientes = atoi(linea + 13);
+        } else if (strncmp(linea, "MAX_MSG=", 8) == 0) {
+            *max_msg = atoi(linea + 8);
+        }
+    }
+
+    fclose(f);
+    return 1;
+}
 
 int main() {
     int sockfd;
     struct sockaddr_in serv_addr;
-    char mensaje[MAX_MSG];
-    char respuesta[MAX_MSG];
+    char ip[100];
+    int puerto, max_clientes, max_msg;
 
-    // Crear socket
+    if (!leer_config("config.txt", ip, &puerto, &max_clientes, &max_msg)) {
+        return 1;
+    }
+
+    char mensaje[max_msg];
+    char respuesta[max_msg];
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("Error al crear el socket");
         exit(1);
     }
 
-    // Configurar dirección del servidor
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(5000);
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serv_addr.sin_port = htons(puerto);
+    serv_addr.sin_addr.s_addr = inet_addr(ip);
 
-    // Conectar al servidor
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         perror("Error al conectar al servidor");
         close(sockfd);
         exit(1);
     }
 
+    struct timeval timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+
+    int bytes = recv(sockfd, respuesta, max_msg - 1, 0);
+    if (bytes > 0) {
+        respuesta[bytes] = '\0';
+        if (strcmp(respuesta, "Servidor lleno. Intente más tarde.") == 0) {
+            printf("Respuesta del servidor: %s\n", respuesta);
+            close(sockfd);
+            return 0;
+        }
+    }
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+
     printf("Conectado al servidor. Escribí comandos (EXIT para salir).\n");
 
-    while (1) 
-    {
+    while (1) {
         printf("\n> ");
-        if (fgets(mensaje, MAX_MSG, stdin) == NULL) 
-        {
+        if (fgets(mensaje, max_msg, stdin) == NULL) {
             printf("Error al leer entrada.\n");
             continue;
         }
 
-// Si no hay '\n' al final, significa que el input fue más largo que el buffer
-        if (strchr(mensaje, '\n') == NULL) 
-        {
-            printf("El mensaje excede el límite de 150 caracteres y no será enviado. Por favor ingrese un mensaje menor al limite\n");
-
-    // Limpiar el buffer de entrada
+        if (strchr(mensaje, '\n') == NULL) {
+            printf("El mensaje excede el límite y no será enviado.\n");
             int ch;
-            while((ch = getchar()) != '\n' && ch != EOF);
-
-            continue; // Volver a pedir mensaje
+            while ((ch = getchar()) != '\n' && ch != EOF);
+            continue;
         }
-//-------------------------------------------------------
-        // Eliminar salto de línea
+
         mensaje[strcspn(mensaje, "\n")] = 0;
 
-        if(strcmp(mensaje,"EXIT") != 0)
-        {
+        if (strcmp(mensaje, "EXIT") != 0) {
             char *inicio = strchr(mensaje, '<');
             char *fin = strchr(mensaje, '>');
-            // Verificar formato: debe tener < y > en orden correcto
-            if (!inicio || !fin || fin < inicio) 
-            {
+            if (!inicio || !fin || fin < inicio) {
                 printf("El mensaje debe tener el formato: COMANDO <texto>\n");
                 continue;
             }
         }
 
-        // Enviar mensaje
         send(sockfd, mensaje, strlen(mensaje), 0);
 
-        // Salir si el comando es EXIT
-        if (strcmp(mensaje, "EXIT") == 0) 
-        {
+        if (strcmp(mensaje, "EXIT") == 0) {
             printf("Cerrando conexión...\n");
             break;
         }
 
-        // Recibir respuesta
-        int bytes = recv(sockfd, respuesta, MAX_MSG - 1, 0);
-
-        if (bytes <= 0) 
-        {
+        bytes = recv(sockfd, respuesta, max_msg - 1, 0);
+        if (bytes <= 0) {
             printf("El servidor cerró la conexión.\n");
-            break;
-        }
-        if(strcmp(respuesta,"Servidor lleno. Intente más tarde.")==0)
-        {
-            printf("Respuesta del servidor: %s\n", respuesta);
             break;
         }
 
