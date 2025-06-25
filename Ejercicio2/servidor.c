@@ -20,17 +20,30 @@ int leer_config(const char *ruta, int *puerto, int *max_clientes, int *max_msg) 
     }
 
     char linea[100];
+    int ok_puerto = 0, ok_clientes = 0, ok_msg = 0;
+
     while (fgets(linea, sizeof(linea), f)) {
         if (strncmp(linea, "PUERTO=", 7) == 0 && puerto) {
             *puerto = atoi(linea + 7);
-        } else if (strncmp(linea, "MAX_CLIENTES=", 13) == 0 && max_clientes) {
+            if (*puerto > 0) ok_puerto = 1;
+        } 
+        else if (strncmp(linea, "MAX_CLIENTES=", 13) == 0 && max_clientes) {
             *max_clientes = atoi(linea + 13);
-        } else if (strncmp(linea, "MAX_MSG=", 8) == 0 && max_msg) {
+            if (*max_clientes > 0) ok_clientes = 1;
+        } 
+        else if (strncmp(linea, "MAX_MSG=", 8) == 0 && max_msg) {
             *max_msg = atoi(linea + 8);
+            if (*max_msg >= 150) ok_msg = 1;
         }
     }
 
     fclose(f);
+
+    if (!ok_puerto || !ok_clientes || !ok_msg) {
+        fprintf(stderr, "Error: Faltan parámetros obligatorios o son inválidos en el archivo de configuración.\n");
+        return 0;
+    }
+
     return 1;
 }
 
@@ -48,10 +61,11 @@ int main() {
     int servidor_fd, nuevo_socket;
     struct sockaddr_in direccion;
     socklen_t addrlen = sizeof(direccion);
-    int puerto, max_clientes, max_msg;
+    int puerto = 0, max_clientes = 0, max_msg = 0;
     int hubo_clientes = 0;
 
     if (!leer_config("config.txt", &puerto, &max_clientes, &max_msg)) {
+        fprintf(stderr, "Servidor no se iniciará por configuración incompleta.\n");
         return 1;
     }
 

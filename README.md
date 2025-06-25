@@ -66,10 +66,12 @@ Ejecute en una nueva terminal el siguiente comando:
 Tanto cliente como servidor utilizan un archivo de configuración __"config.txt"__ dentro de la misma carpeta donde se encuentran.
 
 Este archivo _de texto_ contiene
-- __IP__: Es la dirección IP que se utilizará. _Ejemplo "IP=127.0.0.1"_.
+- __IP__: Es la dirección IP que se utilizará. _Ejemplo "IP=127.0.0.1" (note que para pruebas locales deberá usar la IP de localhost del ejemplo)_.
 - __PUERTO__: Es el puerto del socket. _Ejemplo "PUERTO=5000"_.
 - __MAX_CLIENTES__: Es la cantidad de clientes en simultáneo que atenderá el servidor. _Ejemplo "MAX_CLIENTES=5"_.
-- __MAX_MSG__: Es la cantidad máxima de caracteres que se podrán enviar por comando. _Ejemplo "MAX_MSG=150"_.
+- __MAX_MSG__: Es la cantidad máxima de caracteres que se podrán enviar por comando. Valor mínimo aceptable es "150". _Ejemplo "MAX_MSG=150"_.
+
+> _Si bien MAX_CLIENTES y MAX_MSG pueden ser configurados, se desaconseja modificar sus valores ya que fueron agregados a modo de debug. Y el diseño fue pensado para 5 clientes y mensajes de 150 caracteres_.
 
 ## Funcionalidad
 

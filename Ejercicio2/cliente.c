@@ -13,20 +13,29 @@ int leer_config(const char *ruta, char *ip, int *puerto, int *max_clientes, int 
     }
 
     char linea[100];
+    int ok_puerto = 0, ok_clientes = 0, ok_msg = 0;
     while (fgets(linea, sizeof(linea), f)) {
         if (strncmp(linea, "IP=", 3) == 0) {
             strcpy(ip, linea + 3);
             ip[strcspn(ip, "\n")] = 0;
         } else if (strncmp(linea, "PUERTO=", 7) == 0) {
             *puerto = atoi(linea + 7);
+            if (*puerto > 0) ok_puerto = 1;
         } else if (strncmp(linea, "MAX_CLIENTES=", 13) == 0) {
             *max_clientes = atoi(linea + 13);
+            if (*max_clientes > 0) ok_clientes = 1;
         } else if (strncmp(linea, "MAX_MSG=", 8) == 0) {
             *max_msg = atoi(linea + 8);
+            if (*max_msg >= 150) ok_msg = 1;
         }
     }
 
     fclose(f);
+    if (!ok_puerto || !ok_clientes || !ok_msg) {
+        fprintf(stderr, "Error: Faltan parámetros obligatorios o son inválidos en el archivo de configuración.\n");
+        return 0;
+    }
+
     return 1;
 }
 
@@ -37,6 +46,7 @@ int main() {
     int puerto, max_clientes, max_msg;
 
     if (!leer_config("config.txt", ip, &puerto, &max_clientes, &max_msg)) {
+        fprintf(stderr, "Cliente no se iniciará por configuración incompleta.\n");
         return 1;
     }
 
